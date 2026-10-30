@@ -6,7 +6,7 @@ import pymupdf
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parents[1]/'.env')
 from fastapi import BackgroundTasks,FastAPI,File,HTTPException,UploadFile
-from fastapi.responses import FileResponse,Response
+from fastapi.responses import FileResponse,Response,JSONResponse
 from . import storage as db
 from .document import VERSION as DOCUMENT_VERSION
 from .engine import VERSION,apply_reviews,build_plan
@@ -18,12 +18,19 @@ from .pipeline import BUDGET,MODEL,analyze,document_for,load_baseline,reprocess
 db.initialize()
 @asynccontextmanager
 async def lifespan(app):
+    if not db.storage_configured():
+        yield
+        return
     with db.connection() as con:
         con.execute("UPDATE reports SET state='failed',error='Server restarted. Resume to use completed extraction checkpoints.' WHERE state='processing'")
         con.execute("UPDATE runs SET state='interrupted',ended=? WHERE state='running'",(time.time(),))
         con.execute("UPDATE stages SET state='interrupted',ended=? WHERE state='running'",(time.time(),))
     yield
 app=FastAPI(title='HouseScope · Evidence pipeline',lifespan=lifespan)
+
+@app.exception_handler(db.StorageNotConfigured)
+async def storage_unavailable(request, exc):
+    return JSONResponse(status_code=503,content={'detail':str(exc)})
 
 def get_report(report_id):
     row=db.get_report(report_id)

@@ -14,3 +14,5 @@ fixtures/*.pdf
 housescope-*.png
 
 *.env
+
+.vercel/

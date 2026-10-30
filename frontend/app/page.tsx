@@ -12,7 +12,7 @@ const TABS=['Findings','Repair graph','Cost estimate','Buyer questions','Documen
 export default function Home(){
  const [health,setHealth]=useState<Health|null>(null),[reports,setReports]=useState<{id:string;name:string;state:string}[]>([]),[report,setReport]=useState<Report|null>(null),[active,setActive]=useState('Findings'),[filter,setFilter]=useState('All priorities'),[reviewFilter,setReviewFilter]=useState('All decisions'),[search,setSearch]=useState(''),[selectedId,setSelectedId]=useState<string|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[drag,setDrag]=useState(false);
  const input=useRef<HTMLInputElement>(null);
- const refresh=()=>{api<Health>('/health').then(setHealth).catch(()=>setError('Backend unavailable. Start the project with bash scripts/start.sh.'));api<typeof reports>('/reports').then(setReports).catch(()=>{})};
+ const refresh=()=>{api<Health>('/health').then(setHealth).catch(e=>setError(e.message||'Backend service unavailable.'));api<typeof reports>('/reports').then(setReports).catch(()=>{})};
  useEffect(()=>{refresh()},[]);
  useEffect(()=>{if(report?.state!=='processing')return;const timer=setInterval(()=>{api<Report>(`/reports/${report.id}/status`).then(r=>{setReport(r);if(r.state!=='processing')refresh()}).catch(e=>setError(e.message))},1800);return()=>clearInterval(timer)},[report?.id,report?.state]);
  async function open(id:string){try{setError('');setSelectedId(null);setReport(await api<Report>(`/reports/${id}/status`));setActive('Findings')}catch(e){setError((e as Error).message)}}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "backend": {
+      "root": ".",
+      "framework": "fastapi",
+      "entrypoint": "backend.main:app",
+      "functions": {
+        "backend/main.py": {
+          "maxDuration": 300,
+          "includeFiles": "{backend/cost_catalog.json,fixtures/annotations/**}",
+          "excludeFiles": "{frontend/**,docs/**,scripts/**,backend/tests/**,.venv/**,data/**,.env,.env.*,fixtures/*.pdf}"
+        }
+      },
+      "devCommand": "python3.12 -m uvicorn backend.main:app --host 127.0.0.1 --port $PORT"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "backend",
+          "format": "url",
+          "env": "BACKEND_URL"
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}

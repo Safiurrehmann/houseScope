@@ -4,11 +4,20 @@ from contextlib import contextmanager
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 DATA=Path(os.getenv('HOUSESCOPE_DATA_DIR',str(ROOT/'data')))
-DATA.mkdir(parents=True,exist_ok=True)
 DB=DATA/'housescope.sqlite'
+
+class StorageNotConfigured(RuntimeError):
+    pass
+
+def storage_configured():
+    # No ephemeral fallback: losing this ledger would also reset spending limits.
+    return not os.getenv('VERCEL') or bool(os.getenv('HOUSESCOPE_DATA_DIR'))
 
 @contextmanager
 def connection():
+    if not storage_configured():
+        raise StorageNotConfigured('Durable backend storage is not configured. Vercel Services routing does not persist local SQLite, uploads or the spending ledger. Configure a durable storage adapter before enabling analysis; /tmp is not a production solution.')
+    DATA.mkdir(parents=True,exist_ok=True)
     con=sqlite3.connect(DB,timeout=30);con.row_factory=sqlite3.Row
     try:
         yield con
@@ -20,6 +29,8 @@ def connection():
         con.close()
 
 def initialize():
+    if not storage_configured():
+        return
     with connection() as con:
         con.executescript('''
         CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY,name TEXT,pages TEXT,state TEXT,progress TEXT,result TEXT,error TEXT,created REAL,elapsed REAL DEFAULT 0);

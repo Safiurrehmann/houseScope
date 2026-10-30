@@ -1,38 +1,66 @@
-# Deploying the frontend on Vercel
+# Vercel Services configuration
 
-The repository contains two applications. Importing the Next.js frontend does not also start the Python backend.
+Import the repository root (`./`) as one **Services** project. The root `vercel.json` defines the approved topology: a public frontend and an internal backend. No cloud deployment has been created.
 
-## Vercel project settings
+## Services and public surface
 
-- Repository: `Safiurrehmann/houseScope`
-- Root Directory: `frontend`
-- Framework Preset: Next.js
-- Install Command: `npm ci` (or the default)
-- Build Command: `npm run build`
-- Output Directory: default
-- Environment variable: `BACKEND_URL=https://your-hosted-python-api.example.com`
+- `frontend`: `frontend/`, Next.js. Public catch-all `/(.*)`.
+- `backend`: repository root `.`, FastAPI entrypoint `backend.main:app`. Internal only, with no top-level public rewrite.
+- `frontend` declares a service binding targeting `backend`, injected as `BACKEND_URL`. Do not set this variable yourself in Vercel project settings.
 
-Use only the backend origin, without `/api`, credentials, query parameters or a trailing path. Redeploy after changing this variable because rewrites are resolved during the build. Requests to `/api/*` are forwarded to that backend. Local development still defaults to `http://127.0.0.1:8000`.
+The backend root intentionally differs from the auto-detected `backend/`: the Python code uses package-relative imports and loads reference annotations from repository-level `fixtures/annotations/`. Root `requirements.txt` mirrors the backend requirements because the Services local runner parses a flat dependency file; keep the two lists synchronized. The function configuration includes the cost catalog and annotations explicitly.
 
-Do not put `OPENAI_API_KEY` in a browser-visible variable. For this split setup, configure it only on the Python backend host. No secret is needed by the frontend.
+## Request flow
 
-## What the backend still needs
+`browser → /api/reports → frontend Node route function → BACKEND_URL + api/reports → FastAPI`
 
-The current FastAPI backend requires:
+All existing browser API, PDF image and export URLs remain same-origin `/api/*`. The frontend optional catch-all route handler reads the binding at request time, forwards the method, query, streaming body and useful headers, and returns the upstream response. It handles uploads, binary pages and exports without buffering full payloads. Backend routes retain their existing `/api/*` prefix. There is no framework mount prefix and no `/api/api` public URL.
 
-- A continuously running Python service for the existing background-task workflow.
-- Persistent writable storage for SQLite, uploaded PDFs, layouts and extraction checkpoints.
-- The OpenAI key and an appropriately configured remaining project budget.
-- Access controls before real private inspection reports are accepted into the current shared workspace.
-- Sample retrieval or explicitly provisioned sample files; original downloaded PDFs and the local database are intentionally absent from Git.
+The binding is never read in `next.config.ts`, a build, client-side code or middleware. Building the frontend does not require `BACKEND_URL`. Its local Python fallback is used only outside Vercel. If Vercel supplies no runtime binding, the API function returns a configuration error rather than calling localhost.
 
-The repository is not an all-in-one Vercel deployment. Vercel supports FastAPI, but adapting this backend to serverless execution also requires replacing local persistent storage and reviewing how long-running analysis jobs execute and recover. Simply routing FastAPI on Vercel or moving SQLite to `/tmp` does not preserve the global spending ledger, reports or caches across instances.
+The backend does not call the frontend, so no reverse binding is declared. Public exposure of the backend is not necessary for browser requests because the frontend route function is their gateway. A binding is connectivity, not application authorization; this change does not introduce user accounts or private workspaces.
 
-For the smallest change, deploy this frontend to Vercel and run the existing backend on a Python host with persistent storage. For a Vercel-only design, migrate durable records and files to external database/object storage and adapt the analysis lifecycle first.
+## Local verification
+
+```sh
+python3.12 -m venv .vercel/dev-venv
+. .vercel/dev-venv/bin/activate
+python -m pip install -r requirements.txt
+HOUSESCOPE_DATA_DIR="$PWD/.vercel/local-data" npx vercel dev --local --listen 3100
+```
+
+Python 3.12 is pinned in `.python-version`. The backend local `devCommand` uses Uvicorn with this interpreter; it does not depend on a globally installed Python 3.9 or replace the existing `.venv`. The directory above is isolated local test data, not a hosted storage recommendation.
+
+`vercel dev` is also supported when the project is linked. The local command uses the checked-in service definitions and generated bindings. Keep any local `HOUSESCOPE_DATA_DIR` override outside source control. Do not exercise `/analyze` for routing smoke tests; health, source routing and a small synthetic PDF upload are sufficient without inference cost.
+
+For the existing two-process workflow, `bash scripts/start.sh` continues to work on port 3000 through the runtime gateway's local fallback.
+
+## Runtime environment variables
+
+- `OPENAI_API_KEY`: secret used by the backend only. Never prefix it with `NEXT_PUBLIC_`.
+- `PROJECT_BUDGET_USD`: at most 5; use a reduced remaining allowance if maintaining a separate deployment ledger.
+- `BACKEND_URL`: generated by the binding, not a manual project setting.
+
+Remove an old manually configured `BACKEND_URL` so it cannot override/conflict with the service binding.
+
+## Unresolved hosted persistence and analysis lifecycle
+
+This change configures services and request routing, not a storage migration. The app still uses SQLite, uploaded PDFs, layouts and extraction checkpoints on disk. Those require a durable storage design for hosted execution. Setting `HOUSESCOPE_DATA_DIR=/tmp/...` does not provide durability, shared state or a reliable global spending limit across instances.
+
+On Vercel, if no storage directory is explicitly configured, the backend can import and start but data endpoints return a clear 503. It does not create an ephemeral ledger and silently reset spending limits. An explicit directory is not proof it is durable: a real persistent filesystem or database/object-storage migration is still required. Local development may use a temporary directory for offline tests only.
+
+The current lifespan recovery and in-process background analysis also assume one backend process. They must be adapted before multi-instance production use. The checked-in 300-second function ceiling does not make background jobs durable or guarantee a hosting plan's execution limit.
+
+Sample PDFs remain excluded from Git and are not provided by these service settings. The sample workflow needs an approved source-fetch or provisioning solution before hosted demonstration.
+
+The user confirmed that the backend stays internal and approved the recommended names, roots, frontend gateway and binding. Hosted persistence is a separate required implementation decision; it is not marked complete here.
 
 Official references:
+- https://vercel.com/docs/services
+- https://vercel.com/docs/services/bindings
+- https://vercel.com/docs/services/routing
+- https://vercel.com/docs/services/config-reference
 
-- [Vercel FastAPI support](https://vercel.com/docs/frameworks/backend/fastapi)
-- [Persistent versus temporary Python API data](https://vercel.com/i/where-to-host-python-api)
+## Verification performed
 
-No hosted deployment has been created by the agent.
+Vercel CLI 65.8.0 accepted the service schema and ran both services locally. Runtime binding calls, multipart upload of a small synthetic PDF, PNG/PDF responses, query-preserving JSON export and same-origin canonical redirects passed. A frontend production build also passed with `VERCEL=1` and no `BACKEND_URL` present at build time. Missing hosted storage returned a clear 503 in a separate offline check. No model requests or cloud deployment were made. Large production uploads and cloud analysis execution were not verified.
