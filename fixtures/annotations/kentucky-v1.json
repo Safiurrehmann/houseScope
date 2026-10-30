@@ -1,0 +1,218 @@
+{
+  "id": "kentucky-v1",
+  "version": 1,
+  "document_sha256": "4dbfa8ffba743e3e410dec9846f64d1dbb81f4ee9bcbc973c555391aff64c40c",
+  "source_url": "https://peirsoninspections.com/sample-report",
+  "annotation_method": "Agent-curated from direct inspection of the PDF; not independently human-audited.",
+  "scope": "24 defect/maintenance observations. Summary has 25 entries including a dryer limitation. No claim that inspector severity is a ground-truth repair priority.",
+  "excluded": [
+    {
+      "reference": "18.1.1",
+      "page": 42,
+      "reason": "Dryer absent and components untested: inspection limitation, not confirmed equipment failure."
+    }
+  ],
+  "negative_pages": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    12
+  ],
+  "findings": [
+    {
+      "reference": "3.1.1",
+      "detail_pages": [
+        9
+      ],
+      "title": "Seal siding penetrations",
+      "anchor": "Caulk/seal any areas of home"
+    },
+    {
+      "reference": "4.1.1",
+      "detail_pages": [
+        10
+      ],
+      "title": "Roof covering debris",
+      "anchor": "Debris noted on the roof covering"
+    },
+    {
+      "reference": "4.2.1",
+      "detail_pages": [
+        10
+      ],
+      "title": "Gutter debris",
+      "anchor": "Clean the debris from the gutters"
+    },
+    {
+      "reference": "4.2.2",
+      "detail_pages": [
+        11
+      ],
+      "title": "Downspouts discharge near foundation",
+      "anchor": "Downspouts were observed discharging too close"
+    },
+    {
+      "reference": "5.3.1",
+      "detail_pages": [
+        13
+      ],
+      "title": "Mystery switches",
+      "anchor": "Mystery switches were noted throughout the home"
+    },
+    {
+      "reference": "5.4.1",
+      "detail_pages": [
+        14
+      ],
+      "title": "Missing receptacle cover plates",
+      "anchor": "Replace the missing cover plate"
+    },
+    {
+      "reference": "5.4.2",
+      "detail_pages": [
+        14
+      ],
+      "title": "Loose receptacles",
+      "anchor": "Loose receptacles were noted in the home"
+    },
+    {
+      "reference": "5.4.3",
+      "detail_pages": [
+        15
+      ],
+      "title": "Open ground receptacles",
+      "anchor": "Receptacles in multiple rooms have an open ground"
+    },
+    {
+      "reference": "5.4.4",
+      "detail_pages": [
+        15
+      ],
+      "title": "Laundry GFCI absent",
+      "anchor": "not GFCI protected"
+    },
+    {
+      "reference": "5.4.5",
+      "detail_pages": [
+        16
+      ],
+      "title": "Open neutral receptacle",
+      "anchor": "open neutral condition"
+    },
+    {
+      "reference": "5.4.6",
+      "detail_pages": [
+        16
+      ],
+      "title": "Floor receptacle grounding opening obstructed",
+      "anchor": "obstructs the grounding prong opening"
+    },
+    {
+      "reference": "5.5.1",
+      "detail_pages": [
+        17
+      ],
+      "title": "Missing or inoperable bulbs",
+      "anchor": "Replace all missing/inoperable bulbs"
+    },
+    {
+      "reference": "5.6.1",
+      "detail_pages": [
+        17,
+        18
+      ],
+      "title": "Additional smoke detectors",
+      "anchor": "SMOKE DETECTOR(S) - ADD"
+    },
+    {
+      "reference": "6.1.1",
+      "detail_pages": [
+        20
+      ],
+      "title": "Weak attic ladder",
+      "anchor": "Ladder to the attic is weak"
+    },
+    {
+      "reference": "6.2.1",
+      "detail_pages": [
+        20
+      ],
+      "title": "Insufficient attic insulation",
+      "anchor": "Six inches or less of insulation"
+    },
+    {
+      "reference": "11.2.1",
+      "detail_pages": [
+        30
+      ],
+      "title": "Dirty HVAC air filters",
+      "anchor": "Replace the dirty air filter(s)"
+    },
+    {
+      "reference": "14.1.1",
+      "detail_pages": [
+        35
+      ],
+      "title": "Inoperable fireplace",
+      "anchor": "The fireplace would not light"
+    },
+    {
+      "reference": "15.2.1",
+      "detail_pages": [
+        38
+      ],
+      "title": "Missing cabinet hardware",
+      "anchor": "Install the missing handle(s)/pull(s)"
+    },
+    {
+      "reference": "15.3.1",
+      "detail_pages": [
+        38
+      ],
+      "title": "Loose kitchen faucet",
+      "anchor": "securing the loose faucet"
+    },
+    {
+      "reference": "20.1.1",
+      "detail_pages": [
+        44
+      ],
+      "title": "Missing stair handrail",
+      "anchor": "A handrail was not present"
+    },
+    {
+      "reference": "20.2.1",
+      "detail_pages": [
+        44
+      ],
+      "title": "Loose porch railing",
+      "anchor": "One or more railings were loose"
+    },
+    {
+      "reference": "21.1.1",
+      "detail_pages": [
+        46
+      ],
+      "title": "Regrade soils away from foundation",
+      "anchor": "Pitch slope of soils away from foundation"
+    },
+    {
+      "reference": "23.1.1",
+      "detail_pages": [
+        50
+      ],
+      "title": "Missing crawlspace vapor barrier",
+      "anchor": "Install the missing vapor barrier"
+    },
+    {
+      "reference": "23.1.2",
+      "detail_pages": [
+        50
+      ],
+      "title": "Crawlspace moisture intrusion",
+      "anchor": "Signs of moisture intrusion"
+    }
+  ]
+}

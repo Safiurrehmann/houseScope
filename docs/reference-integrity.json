@@ -1,0 +1,160 @@
+{
+  "mode": "offline_reference_integrity",
+  "model_quality_measured": false,
+  "document_stats": {
+    "pages": 56,
+    "blocks": 929,
+    "indexed_observations": 51,
+    "detail_references": 25,
+    "sparse_pages": []
+  },
+  "annotation_anchors": 24,
+  "matched_anchors": 24,
+  "located_anchors": 24,
+  "checks": [
+    {
+      "reference": "3.1.1",
+      "page": 9,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "4.1.1",
+      "page": 10,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "4.2.1",
+      "page": 10,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "4.2.2",
+      "page": 11,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.3.1",
+      "page": 13,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.4.1",
+      "page": 14,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.4.2",
+      "page": 14,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.4.3",
+      "page": 15,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.4.4",
+      "page": 15,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.4.5",
+      "page": 16,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.4.6",
+      "page": 16,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.5.1",
+      "page": 17,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "5.6.1",
+      "page": 17,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "6.1.1",
+      "page": 20,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "6.2.1",
+      "page": 20,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "11.2.1",
+      "page": 30,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "14.1.1",
+      "page": 35,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "15.2.1",
+      "page": 38,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "15.3.1",
+      "page": 38,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "20.1.1",
+      "page": 44,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "20.2.1",
+      "page": 44,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "21.1.1",
+      "page": 46,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "23.1.1",
+      "page": 50,
+      "quote_matched": true,
+      "geometry_matched": true
+    },
+    {
+      "reference": "23.1.2",
+      "page": 50,
+      "quote_matched": true,
+      "geometry_matched": true
+    }
+  ]
+}

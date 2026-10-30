@@ -1,0 +1,9 @@
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+python-multipart>=0.0.18
+pymupdf>=1.24,<2
+pydantic>=2.10,<3
+python-dotenv>=1,<2
+openai>=2,<3
+pytest>=8,<9
+httpx>=0.27,<1

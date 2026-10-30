@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+node_modules/
+.next/
+fixtures/*.pdf
+
+*.tsbuildinfo
+
+housescope-*.png
+
+*.env

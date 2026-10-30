@@ -1,0 +1,215 @@
+{
+  "mode": "live_extraction_baseline_before_continuation_binding",
+  "pipeline_version": "pipeline-2.0",
+  "document_version": "layout-v2",
+  "evaluation": {
+    "dataset": "kentucky-v1",
+    "annotation_method": "Agent-curated from direct inspection of the PDF; not independently human-audited.",
+    "scope": "24 defect/maintenance observations. Summary has 25 entries including a dryer limitation. No claim that inspector severity is a ground-truth repair priority.",
+    "expected": 24,
+    "excluded": [
+      {
+        "reference": "18.1.1",
+        "page": 42,
+        "reason": "Dryer absent and components untested: inspection limitation, not confirmed equipment failure."
+      }
+    ],
+    "limitations": "Reference matching measures extraction coverage; detail-page quote localization is mechanical. Neither establishes semantic correctness. The labels have not been independently human-audited.",
+    "state": "measured",
+    "precision": 0.9583333333333334,
+    "recall": 0.9583333333333334,
+    "detail_citation_accuracy": 0.9565217391304348,
+    "true_positives": 23,
+    "false_positives": 1,
+    "false_negatives": 1,
+    "matches": [
+      {
+        "reference": "3.1.1",
+        "finding_id": "f-b7aa6a0cdfe46e",
+        "title": "Seal siding penetrations",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "4.1.1",
+        "finding_id": "f-3a41d99d27d169",
+        "title": "Roof covering debris",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "4.2.1",
+        "finding_id": "f-35a4619dc7b7c2",
+        "title": "Gutter debris",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "4.2.2",
+        "finding_id": "f-0cfb8b1e15dedc",
+        "title": "Downspouts discharge near foundation",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.4.1",
+        "finding_id": "f-140ada00fca199",
+        "title": "Missing receptacle cover plates",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.4.2",
+        "finding_id": "f-a4eebe57dade31",
+        "title": "Loose receptacles",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.4.3",
+        "finding_id": "f-1319a0cfe2214e",
+        "title": "Open ground receptacles",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.4.4",
+        "finding_id": "f-76601d58f532c2",
+        "title": "Laundry GFCI absent",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.4.5",
+        "finding_id": "f-54e07600d15a04",
+        "title": "Open neutral receptacle",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.4.6",
+        "finding_id": "f-4521c768a3fc27",
+        "title": "Floor receptacle grounding opening obstructed",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.5.1",
+        "finding_id": "f-64a7149a19f56b",
+        "title": "Missing or inoperable bulbs",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "5.6.1",
+        "finding_id": "f-cb20217d27fc3c",
+        "title": "Additional smoke detectors",
+        "detail_citation_correct": false,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "6.1.1",
+        "finding_id": "f-a3b5a03584d971",
+        "title": "Weak attic ladder",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "6.2.1",
+        "finding_id": "f-47da6a5c2b3f7b",
+        "title": "Insufficient attic insulation",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "11.2.1",
+        "finding_id": "f-73fe4d21105f98",
+        "title": "Dirty HVAC air filters",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "14.1.1",
+        "finding_id": "f-7b5f081d39ca34",
+        "title": "Inoperable fireplace",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "15.2.1",
+        "finding_id": "f-fec5a2af264369",
+        "title": "Missing cabinet hardware",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "15.3.1",
+        "finding_id": "f-59e0b4b7edc624",
+        "title": "Loose kitchen faucet",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "20.1.1",
+        "finding_id": "f-4838d8f8af040f",
+        "title": "Missing stair handrail",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "20.2.1",
+        "finding_id": "f-83f749143a1282",
+        "title": "Loose porch railing",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "21.1.1",
+        "finding_id": "f-42548a5ddaf2a9",
+        "title": "Regrade soils away from foundation",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "23.1.1",
+        "finding_id": "f-aa4ffd5481d12a",
+        "title": "Missing crawlspace vapor barrier",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      },
+      {
+        "reference": "23.1.2",
+        "finding_id": "f-a06a8e162a3bbd",
+        "title": "Crawlspace moisture intrusion",
+        "detail_citation_correct": true,
+        "match_method": "validated_reference"
+      }
+    ],
+    "missed": [
+      {
+        "reference": "5.3.1",
+        "detail_pages": [
+          13
+        ],
+        "title": "Mystery switches",
+        "anchor": "Mystery switches were noted throughout the home"
+      }
+    ],
+    "unmatched_predictions": [
+      {
+        "id": "f-5e2685d2818c37",
+        "title": "Additional smoke detectors recommended",
+        "flags": [
+          "reference_mismatch"
+        ]
+      }
+    ],
+    "unsupported_safety_findings": [
+      "f-5e2685d2818c37"
+    ]
+  },
+  "elapsed_seconds": 82.72550415992737,
+  "input_tokens": 56894,
+  "output_tokens": 9036,
+  "cost_usd": 0.0102074
+}
