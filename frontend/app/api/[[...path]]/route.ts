@@ -1,6 +1,8 @@
+import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 const hopByHop = [
@@ -46,9 +48,28 @@ async function proxy(request: NextRequest, context: Context): Promise<Response> 
     return Response.json({ detail: 'Backend service URL is invalid.' }, { status: 503 });
   }
   try {
+    const outgoing = forwardedHeaders(request.headers);
+    outgoing.delete('x-housescope-workspace');
+    let workspaceCookie: string | undefined;
+    if (process.env.VERCEL || process.env.HOUSESCOPE_STORAGE === 'supabase') {
+      const key = process.env.HOUSESCOPE_SESSION_SECRET || process.env.SUPABASE_SECRET_KEY;
+      if (!key) return Response.json({detail:'Server workspace credentials are missing.'},{status:503});
+      const sign = (value:string) => createHmac('sha256',key).update('housescope:'+value).digest('hex');
+      let token = request.cookies.get('housescope_workspace')?.value || '';
+      const [identity,expires,signature] = token.split('.');
+      const expected = sign(`${identity}.${expires}`);
+      const valid = /^[a-f0-9]{32}$/.test(identity || '') && Number(expires)>Date.now()/1000 &&
+        /^[a-f0-9]{64}$/.test(signature || '') && timingSafeEqual(Buffer.from(signature),Buffer.from(expected));
+      if (!valid) {
+        const value = `${randomBytes(16).toString('hex')}.${Math.floor(Date.now()/1000)+30*86400}`;
+        token = value+'.'+sign(value);
+        workspaceCookie = `housescope_workspace=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${process.env.VERCEL ? '; Secure' : ''}`;
+      }
+      outgoing.set('x-housescope-workspace',token);
+    }
     const options: RequestInit & { duplex?: 'half' } = {
       method: request.method,
-      headers: forwardedHeaders(request.headers),
+      headers: outgoing,
       redirect: 'manual',
       cache: 'no-store',
       signal: request.signal,
@@ -59,6 +80,7 @@ async function proxy(request: NextRequest, context: Context): Promise<Response> 
     }
     const upstream = await fetch(target, options);
     const headers = forwardedHeaders(upstream.headers);
+    if (workspaceCookie) headers.append('set-cookie',workspaceCookie);
     // fetch may decompress upstream responses. Do not forward stale wire sizes.
     headers.delete('content-encoding');
     headers.delete('content-length');

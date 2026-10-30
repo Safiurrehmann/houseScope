@@ -1,12 +1,14 @@
 """Local API for document intelligence, review, evaluation and trace exports."""
-import hashlib,json,os,time
+import hashlib,json,os,time,uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 import pymupdf
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parents[1]/'.env')
 from fastapi import BackgroundTasks,FastAPI,File,HTTPException,UploadFile
-from fastapi.responses import FileResponse,Response,JSONResponse
+from fastapi.responses import FileResponse,Response,JSONResponse,RedirectResponse
+from pydantic import BaseModel,Field
+from . import artifacts,workspace
 from . import storage as db
 from .document import VERSION as DOCUMENT_VERSION
 from .engine import VERSION,apply_reviews,build_plan
@@ -18,7 +20,7 @@ from .pipeline import BUDGET,MODEL,analyze,document_for,load_baseline,reprocess
 db.initialize()
 @asynccontextmanager
 async def lifespan(app):
-    if not db.storage_configured():
+    if not db.storage_configured() or db.cloud():
         yield
         return
     with db.connection() as con:
@@ -28,13 +30,23 @@ async def lifespan(app):
     yield
 app=FastAPI(title='HouseScope · Evidence pipeline',lifespan=lifespan)
 
+@app.middleware('http')
+async def workspace_scope(request,call_next):
+    identity='local'
+    if db.cloud():
+        identity=workspace.verify(request.headers.get('x-housescope-workspace',''))
+        if not identity:return JSONResponse(status_code=401,content={'detail':'Open HouseScope through its frontend to establish a workspace.'})
+    token=workspace.owner.set(identity)
+    try:return await call_next(request)
+    finally:workspace.owner.reset(token)
+
 @app.exception_handler(db.StorageNotConfigured)
 async def storage_unavailable(request, exc):
     return JSONResponse(status_code=503,content={'detail':str(exc)})
 
 def get_report(report_id):
     row=db.get_report(report_id)
-    if not row:raise HTTPException(404,'Report not found')
+    if not row or row['owner']!=workspace.owner.get():raise HTTPException(404,'Report not found')
     return row
 
 def effective(report_id):
@@ -46,25 +58,26 @@ def health():
         spent=con.execute('SELECT COALESCE(SUM(actual),0) FROM usage').fetchone()[0]
         committed=con.execute('SELECT COALESCE(SUM(COALESCE(actual,reserved)),0) FROM usage').fetchone()[0]
     return {'ready':bool(os.getenv('OPENAI_API_KEY')),'model':MODEL,'budget':BUDGET,'spent':spent,
-            'committed':committed,'remaining':max(0,BUDGET-committed),'pipeline_version':VERSION}
+            'committed':committed,'remaining':max(0,BUDGET-committed),'pipeline_version':VERSION,'direct_uploads':db.cloud(),'request_driven':db.cloud()}
 
 @app.get('/api/reports')
 def reports():
-    with db.connection() as con:return [dict(r) for r in con.execute('SELECT id,name,state,created FROM reports ORDER BY created DESC')]
+    with db.connection() as con:return [dict(r) for r in con.execute('SELECT id,name,state,created FROM reports WHERE owner=? ORDER BY created DESC',(workspace.owner.get(),))]
 
 def register_pdf(content,name):
     if len(content)>25*1024*1024:raise HTTPException(413,'Maximum file size is 25 MB')
     if not content.startswith(b'%PDF-'):raise HTTPException(400,'Please upload a valid PDF')
-    report_id=hashlib.sha256(content).hexdigest()
+    document_hash=hashlib.sha256(content).hexdigest()
+    report_id=hashlib.sha256((workspace.owner.get()+':'+document_hash).encode()).hexdigest() if db.cloud() else document_hash
     try:
         with pymupdf.open(stream=content,filetype='pdf') as doc:
             if doc.needs_pass or not 1<=len(doc)<=150:raise ValueError('Use an unlocked PDF with 1–150 pages')
     except Exception as exc:raise HTTPException(400,str(exc) if isinstance(exc,ValueError) else 'The PDF could not be opened')
     path=db.DATA/(report_id+'.pdf')
-    if not path.exists():path.write_bytes(content)
+    if not artifacts.exists(path):artifacts.write(path,content,'application/pdf')
     with db.connection() as con:
-        con.execute('INSERT OR IGNORE INTO reports(id,name,pages,state,progress,created) VALUES(?,?,?,?,?,?)',
-                    (report_id,Path(name).name,'[]','uploaded','Document indexed; ready for extraction',time.time()))
+        con.execute('INSERT INTO reports(id,name,pages,state,progress,created,owner,document_hash) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING',
+                    (report_id,Path(name).name,'[]','uploaded','Document indexed; ready for extraction',time.time(),workspace.owner.get(),document_hash))
     document_for(report_id)
     return status(report_id)
 
@@ -75,17 +88,34 @@ async def upload(file:UploadFile=File(...)):
 @app.post('/api/samples/kentucky')
 def sample():
     path=db.ROOT/'fixtures/peirson-kentucky-sample.pdf'
-    if not path.exists():raise HTTPException(404,'Download the Kentucky sample listed in fixtures/SOURCES.md first.')
-    return register_pdf(path.read_bytes(),'Kentucky · Public inspection sample.pdf')
+    if path.exists():content=path.read_bytes()
+    else:
+        import httpx
+        try:
+            parts=[];size=0
+            with httpx.stream('GET','https://peirsoninspections.com/sample-inspection-report.pdf',timeout=40,follow_redirects=True) as response:
+                response.raise_for_status()
+                for part in response.iter_bytes():
+                    size+=len(part)
+                    if size>artifacts.MAX_FILE:raise ValueError('Sample too large')
+                    parts.append(part)
+            content=b''.join(parts)
+            if hashlib.sha256(content).hexdigest()!='4dbfa8ffba743e3e410dec9846f64d1dbb81f4ee9bcbc973c555391aff64c40c':raise ValueError('Sample changed')
+        except Exception:raise HTTPException(502,'Public sample unavailable or changed. Upload your own inspection PDF.') from None
+    return register_pdf(content,'Kentucky · Public inspection sample.pdf')
 
 @app.post('/api/reports/{report_id}/analyze')
 def start(report_id:str,background:BackgroundTasks):
     row=get_report(report_id)
-    if row['state'] in ['complete','processing']:return status(report_id)
+    if row['state']=='complete':return status(report_id)
+    if row['state']=='processing' and (not db.cloud() or row['lease_until']>time.time()):return status(report_id)
     if not os.getenv('OPENAI_API_KEY'):raise HTTPException(400,'Add OPENAI_API_KEY to the root .env and restart the backend.')
     with db.connection() as con:
+        if db.cloud():
+            con.execute('BEGIN IMMEDIATE')
+            con.execute("UPDATE reports SET state='failed',lease_until=0 WHERE id=? AND state='processing' AND lease_until<?",(report_id,time.time()))
         changed=con.execute("UPDATE reports SET state='processing',error=NULL,progress='Preparing staged analysis' WHERE id=? AND state NOT IN ('processing','complete')",(report_id,)).rowcount
-    if changed:background.add_task(analyze,report_id)
+    if changed and not db.cloud():background.add_task(analyze,report_id)
     return status(report_id)
 
 @app.post('/api/reports/{report_id}/reprocess')
@@ -167,7 +197,7 @@ def page_layout(report_id:str,page:int):
 @app.get('/api/reports/{report_id}/pages/{page}')
 def page_image(report_id:str,page:int,source_id:str=''):
     get_report(report_id)
-    with pymupdf.open(db.DATA/(report_id+'.pdf')) as doc:
+    with pymupdf.open(stream=artifacts.read(db.DATA/(report_id+'.pdf')),filetype='pdf') as doc:
         if not 1<=page<=len(doc):raise HTTPException(404,'Page not found')
         p=doc[page-1]
         if source_id:
@@ -179,7 +209,10 @@ def page_image(report_id:str,page:int,source_id:str=''):
 
 @app.get('/api/reports/{report_id}/pdf')
 def pdf(report_id:str):
-    get_report(report_id);return FileResponse(db.DATA/(report_id+'.pdf'),media_type='application/pdf')
+    get_report(report_id)
+    path=db.DATA/(report_id+'.pdf')
+    if db.cloud():return RedirectResponse(artifacts.signed_download(path),status_code=307)
+    return FileResponse(path,media_type='application/pdf')
 
 @app.patch('/api/reports/{report_id}/findings/{finding_id}/review')
 def review(report_id:str,finding_id:str,body:Review):
@@ -248,3 +281,53 @@ def export(report_id:str,format:str='markdown'):
     lines.extend(['Method: '+estimate['method'],'Excluded: '+ '; '.join(estimate['exclusions'])])
     lines.extend(['','## Evaluation',json.dumps(r['evaluation'],indent=2)])
     return Response('\n'.join(lines),media_type='text/markdown',headers={'Content-Disposition':'attachment; filename="housescope-assessment.md"'})
+
+
+@app.post('/api/reports/{report_id}/advance')
+def advance(report_id:str):
+    row=get_report(report_id)
+    if not db.cloud() or row['state']!='processing':return status(report_id)
+    now=time.time()
+    with db.connection() as con:
+        con.execute('BEGIN IMMEDIATE')
+        row=con.execute('SELECT state,lease_until FROM reports WHERE id=?',(report_id,)).fetchone()
+        if row['state']!='processing':pass
+        elif row['lease_until']>now:pass
+        elif row['lease_until']:
+            con.execute("UPDATE reports SET state='failed',error='A section was interrupted. Resume explicitly; its spending reservation is retained.',lease_until=0 WHERE id=?",(report_id,))
+        else:
+            con.execute('UPDATE reports SET lease_until=? WHERE id=?',(now+360,report_id))
+            row=None
+    if row is not None:return status(report_id)
+    try:analyze(report_id,max_calls=1)
+    finally:db.update(report_id,lease_until=0)
+    return status(report_id)
+
+class UploadTicket(BaseModel):
+    name:str=Field(min_length=1,max_length=255)
+    size:int=Field(gt=0,le=25*1024*1024)
+
+class ImportTicket(BaseModel):
+    ticket:str=Field(pattern=r'^[0-9a-f]{32}$')
+
+@app.post('/api/uploads')
+def create_upload(body:UploadTicket):
+    if not db.cloud():raise HTTPException(400,'Use multipart upload in local mode.')
+    ticket=uuid.uuid4().hex;key='incoming/'+workspace.owner.get()+'/'+ticket+'.pdf'
+    url=artifacts.signed_upload(key)
+    with db.connection() as con:
+        con.execute('INSERT INTO upload_tickets(id,owner,path,name,created) VALUES(?,?,?,?,?)',
+                    (ticket,workspace.owner.get(),key,Path(body.name).name,time.time()))
+    return {'ticket':ticket,'url':url}
+
+@app.post('/api/reports/import')
+def import_upload(body:ImportTicket):
+    if not db.cloud():raise HTTPException(400,'Use multipart upload in local mode.')
+    with db.connection() as con:
+        ticket=con.execute('SELECT * FROM upload_tickets WHERE id=? AND owner=?',(body.ticket,workspace.owner.get())).fetchone()
+    if not ticket:raise HTTPException(404,'Upload ticket not found')
+    if ticket['report']:return status(ticket['report'])
+    if ticket['created']<time.time()-3600:raise HTTPException(410,'Upload expired. Select the PDF again.')
+    result=register_pdf(artifacts.read(db.DATA/ticket['path']),ticket['name'])
+    with db.connection() as con:con.execute('UPDATE upload_tickets SET report=? WHERE id=?',(result['id'],body.ticket))
+    return result

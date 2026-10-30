@@ -1,5 +1,5 @@
-"""SQLite persistence, append-only review history, and per-request budget reservations."""
-import json,os,sqlite3,time
+"""SQLite/Postgres persistence with transactional review and spending reservations."""
+import json,os,sqlite3,time,threading
 from contextlib import contextmanager
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
@@ -9,14 +9,70 @@ DB=DATA/'housescope.sqlite'
 class StorageNotConfigured(RuntimeError):
     pass
 
+def cloud():
+    return os.getenv('HOUSESCOPE_STORAGE', 'supabase' if os.getenv('VERCEL') else 'sqlite') == 'supabase'
+
+class Row(dict):
+    def __getitem__(self, key):
+        return list(self.values())[key] if isinstance(key,int) else super().__getitem__(key)
+
+class Cursor:
+    def __init__(self, cursor, returned=False):
+        self.cursor=cursor; self.rowcount=cursor.rowcount
+        self.lastrowid=cursor.fetchone()['id'] if returned else None
+    def fetchone(self):
+        row=self.cursor.fetchone(); return Row(row) if row else None
+    def fetchall(self): return [Row(r) for r in self.cursor.fetchall()]
+    def __iter__(self): return iter(self.fetchall())
+
+class Postgres:
+    def __init__(self, con): self.con=con
+    def execute(self, sql, params=()):
+        if sql.strip().upper()=='BEGIN IMMEDIATE':
+            return Cursor(self.con.execute('SELECT pg_advisory_xact_lock(746812903)'))
+        returned=sql.lstrip().upper().startswith(tuple('INSERT INTO '+t.upper()+'(' for t in ['usage','stages','reviews','budget_versions']))
+        sql=sql.replace('?', '%s')
+        if returned: sql+=' RETURNING id'
+        return Cursor(self.con.execute(sql,params),returned)
+
+_pool=None
+_pool_lock=threading.Lock()
+
+def postgres_pool():
+    global _pool
+    from psycopg_pool import ConnectionPool
+    from psycopg.rows import dict_row
+    with _pool_lock:
+        if _pool is None:
+            _pool=ConnectionPool(os.environ['DATABASE_URL'],min_size=0,max_size=3,timeout=12,
+                kwargs={'connect_timeout':10,'sslmode':'verify-full','sslrootcert':str(ROOT/'backend/supabase-ca.crt'),
+                        'prepare_threshold':None,'row_factory':dict_row},open=True)
+    return _pool
+
+@contextmanager
+def postgres_connection():
+    import psycopg
+    from psycopg_pool import PoolTimeout
+    try:
+        with postgres_pool().connection() as con:
+            with con.transaction():
+                con.execute('SET LOCAL search_path TO housescope')
+                con.execute("SET LOCAL statement_timeout = '25s'")
+                yield Postgres(con)
+    except (PoolTimeout,psycopg.OperationalError,psycopg.errors.UndefinedTable,psycopg.errors.InvalidSchemaName,psycopg.errors.QueryCanceled):
+        raise StorageNotConfigured('Supabase database is unavailable or not provisioned. Check the pooler DATABASE_URL and run scripts/setup_supabase.py.') from None
+
 def storage_configured():
     # No ephemeral fallback: losing this ledger would also reset spending limits.
-    return not os.getenv('VERCEL') or bool(os.getenv('HOUSESCOPE_DATA_DIR'))
+    return all(os.getenv(k) for k in ['DATABASE_URL','SUPABASE_URL','SUPABASE_SECRET_KEY']) if cloud() else not os.getenv('VERCEL')
 
 @contextmanager
 def connection():
     if not storage_configured():
         raise StorageNotConfigured('Durable backend storage is not configured. Vercel Services routing does not persist local SQLite, uploads or the spending ledger. Configure a durable storage adapter before enabling analysis; /tmp is not a production solution.')
+    if cloud():
+        with postgres_connection() as con: yield con
+        return
     DATA.mkdir(parents=True,exist_ok=True)
     con=sqlite3.connect(DB,timeout=30);con.row_factory=sqlite3.Row
     try:
@@ -31,6 +87,7 @@ def connection():
 def initialize():
     if not storage_configured():
         return
+    if cloud(): return # Provision explicitly with scripts/setup_supabase.py, never on cold starts.
     with connection() as con:
         con.executescript('''
         CREATE TABLE IF NOT EXISTS reports(id TEXT PRIMARY KEY,name TEXT,pages TEXT,state TEXT,progress TEXT,result TEXT,error TEXT,created REAL,elapsed REAL DEFAULT 0);
@@ -42,6 +99,11 @@ def initialize():
         CREATE TABLE IF NOT EXISTS budget_versions(id INTEGER PRIMARY KEY,report TEXT,revision INTEGER,payload TEXT,snapshot TEXT,catalog_version TEXT,created REAL,UNIQUE(report,revision));
         CREATE TABLE IF NOT EXISTS reviews(id INTEGER PRIMARY KEY,report TEXT,finding TEXT,revision INTEGER,decision TEXT,note TEXT,changes TEXT,created REAL,UNIQUE(report,finding,revision));
         ''')
+    with connection() as con:
+        columns={r['name'] for r in con.execute('PRAGMA table_info(reports)')}
+        for name,typ in [('owner',"TEXT DEFAULT 'local'"),('document_hash','TEXT'),('lease_until','REAL DEFAULT 0')]:
+            if name not in columns: con.execute('ALTER TABLE reports ADD COLUMN '+name+' '+typ)
+
 
 def get_report(report_id):
     with connection() as con:row=con.execute('SELECT * FROM reports WHERE id=?',(report_id,)).fetchone()

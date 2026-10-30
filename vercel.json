@@ -8,7 +8,7 @@
       "functions": {
         "backend/main.py": {
           "maxDuration": 300,
-          "includeFiles": "{backend/cost_catalog.json,fixtures/annotations/**}",
+          "includeFiles": "{backend/cost_catalog.json,backend/supabase-ca.crt,fixtures/annotations/**}",
           "excludeFiles": "{frontend/**,docs/**,scripts/**,backend/tests/**,.venv/**,data/**,.env,.env.*,fixtures/*.pdf}"
         }
       },

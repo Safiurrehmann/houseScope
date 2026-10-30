@@ -13,7 +13,7 @@ def normalize(text):
 def extract_document(path):
     pages = []
     observations = []
-    with pymupdf.open(path) as doc:
+    with (pymupdf.open(stream=path,filetype='pdf') if isinstance(path,bytes) else pymupdf.open(path)) as doc:
         if doc.needs_pass or not 1 <= len(doc) <= 150:
             raise ValueError('Use an unlocked PDF with 1–150 pages')
         for index, page in enumerate(doc):

@@ -6,6 +6,10 @@ from .document import normalize
 FIXTURES=Path(__file__).resolve().parents[1]/'fixtures/annotations'
 
 def reference_for(report_id):
+    from . import storage as db
+    if db.cloud():
+        row=db.get_report(report_id)
+        if row:report_id=row['document_hash'] or report_id
     for path in FIXTURES.glob('*.json'):
         fixture=json.loads(path.read_text())
         if fixture['document_sha256']==report_id:return fixture
