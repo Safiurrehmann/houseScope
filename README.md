@@ -89,3 +89,7 @@ See `docs/ARCHITECTURE.md` for design decisions and limitations. Public samples 
 ## Source-based cost estimation
 
 The **Cost estimate** tab adds a quantity-based repair budget using a small cited US reference catalog and custom quote inputs. Set quantities, source assumptions, a local factor, contingency and fees; inspect partial scope coverage, then save/export a revision. It replaces the interface's old illustrative scenario totals with a separate, transparent budgeting workflow. There are no additional AI calls. See [cost-estimation method and source ranges](docs/COST_ESTIMATION.md).
+
+## Vercel frontend deployment
+
+Import the repository with **Root Directory = `frontend`** and set **`BACKEND_URL`** to a separately hosted HTTPS Python API origin. The current Python process, SQLite database and local PDF files are not deployed by importing the Next.js frontend. See [Vercel settings and backend requirements](docs/VERCEL.md). A Vercel-only backend requires a storage/job-lifecycle adaptation first.
