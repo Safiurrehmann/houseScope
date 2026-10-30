@@ -4,7 +4,7 @@ from urllib.parse import quote
 import httpx
 from . import storage as db
 
-BUCKET=os.getenv('SUPABASE_STORAGE_BUCKET','housescope')
+BUCKET=(os.getenv('SUPABASE_STORAGE_BUCKET') or '').strip() or 'housescope'
 MAX_FILE=25*1024*1024
 _client=httpx.Client(timeout=45)
 
@@ -17,6 +17,15 @@ def request(method,path,**kwargs):
                                headers=headers,timeout=45,**kwargs)
         if allow_missing and response.status_code in (400,404): return response
         if response.status_code>=400:
+            try: failure=response.json()
+            except ValueError: failure={}
+            # Only map known errors to fixed messages. Never expose upstream payloads,
+            # credentials, signed tokens, or internal object paths to the browser.
+            message=str(failure.get('message','')).casefold()
+            if 'bucket not found' in message:
+                raise db.StorageNotConfigured('Supabase Storage bucket not found. Set SUPABASE_STORAGE_BUCKET=housescope and ensure SUPABASE_URL points to the project provisioned with scripts/setup_supabase.py.')
+            if any(reason in message for reason in ['invalid jwt','invalid api key','signature verification failed','invalid signature']):
+                raise db.StorageNotConfigured('Supabase Storage rejected the server key. Check SUPABASE_SECRET_KEY belongs to the SUPABASE_URL project; use a server secret or service-role key.')
             raise db.StorageNotConfigured('Supabase Storage request failed (HTTP '+str(response.status_code)+'). Check the server secret and private bucket setup.')
         return response
     except httpx.HTTPError:

@@ -59,6 +59,8 @@ Set these in Vercel project Environment Variables for Production (and Preview if
 | `PROJECT_BUDGET_USD` | `5`, the hard maximum for this shared project ledger |
 | `SUPABASE_STORAGE_BUCKET` | `housescope` (optional; default) |
 
+Leave `SUPABASE_STORAGE_BUCKET` unset or use exactly `housescope`; blank values also use the default. An HTTP 400 during signed-upload creation can mean the configured bucket does not exist in the selected project.
+
 `BACKEND_URL` comes from the service binding; do not create it manually. Neither `NEXT_PUBLIC_SUPABASE_URL` nor a publishable Supabase key is needed for this server-managed integration. Never use a `NEXT_PUBLIC_` prefix on database URLs, server keys or session secrets.
 
 Local `scripts/start.sh` continues using SQLite. To exercise Supabase locally, set `HOUSESCOPE_STORAGE=supabase` in the root `.env` and also in the frontend process environment. On Vercel both services select Supabase automatically. Do not set `HOUSESCOPE_DATA_DIR=/tmp`; there is no hosted SQLite fallback.
